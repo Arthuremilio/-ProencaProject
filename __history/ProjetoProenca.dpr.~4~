@@ -1,0 +1,17 @@
+program ProjetoProenca;
+
+uses
+  Vcl.Forms,
+  PDV in 'View\PDV.pas' {Form1},
+  Classes in 'Classes\Classes.pas',
+  Login in 'View\Login.pas' {fmrLogin};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TfmrLogin, fmrLogin);
+  Application.Run;
+end.

@@ -1,0 +1,48 @@
+unit Classes;
+
+interface
+
+{$REGION 'Uses'}
+uses
+  Generics.Collections,
+  SysUtils;
+{$ENDREGION}
+
+Type
+  TUsuario = class
+  private
+    FNome: String;
+    FUsuario: String;
+    FSenha: String;
+  public
+    property Nome: String read FNome write FNome;
+    property Usuario: String read FUsuario write FUsuario;
+    property Senha: String read FSenha write FSenha;
+  end;
+
+  TProduto = class
+  private
+      FCodigo: Integer;
+      FNome: String;
+      FQuantidade: Integer;
+      FValor: Double;
+      FValorTotal: Double;
+      FCodPedido: Integer;
+  public
+    property Codigo: Integer read FCodigo write FCodigo;
+    property Nome: String read FNome write FNome;
+    property Quantidade: Integer read FQuantidade write FQuantidade;
+    property Valor: Double read FValor write FValor;
+    property ValorTotal: Double read FValorTotal write FValorTotal;
+    property CodPedido: Integer read FCodPedido write FCodPedido;
+  end;
+
+implementation
+
+{ TPedido }
+
+
+
+
+
+end.

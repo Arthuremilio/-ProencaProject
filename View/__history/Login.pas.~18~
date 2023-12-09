@@ -1,0 +1,103 @@
+unit Login;
+
+interface
+{$REGION'Uses'}
+uses
+  Winapi.Windows,
+  Winapi.Messages,
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.Buttons,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Classes,
+  Generics.Collections;
+{$ENDREGION}
+
+type
+  TfrmLogin = class(TForm)
+    pnlLogin: TPanel;
+    lblUsuario: TLabel;
+    lblSenha: TLabel;
+    edtUsuario: TEdit;
+    edtSenha: TEdit;
+    btnAcessar: TButton;
+    btnCancelar: TButton;
+    procedure FormCreate(Sender: TObject);
+    procedure btnAcessarClick(Sender: TObject);
+    procedure btnCancelarClick(Sender: TObject);
+  private
+    FUsuario: TUsuario;
+    function Logon(const Usuario, Senha: String):Boolean;
+    function Sair: Boolean;
+    procedure MensagemDeErro(const Erro: String);
+  public
+    property Usuario: TUsuario read FUsuario write FUsuario;
+
+    destructor  Destroy; override;
+  end;
+
+var
+  frmLogin: TfrmLogin;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfrmLogin.btnAcessarClick(Sender: TObject);
+begin
+  if not Logon(edtUsuario.Text, edtSenha.Text) then
+    raise Exception.Create('Usuario ou Senha incorretos');
+
+  Close;
+end;
+
+procedure TfrmLogin.btnCancelarClick(Sender: TObject);
+begin
+  if Sair then
+    Application.Terminate;
+
+end;
+
+function TfrmLogin.Logon(const Usuario, Senha: String): Boolean;
+var
+  I: Integer;
+begin
+  try
+    Result:= False;
+      for I := 0 to Usuarios.Count -1 do
+      begin
+        if (Usuarios[i].Usuario = Usuario) and (Usuarios[i].Senha = Senha) then
+        begin
+          Result := True;
+          Break;
+        end;
+      end;
+  except
+    on E: Exception do
+      MensagemDeErro(E.Message);
+
+  end;
+end;
+
+procedure TfrmLogin.MensagemDeErro(const Erro: String);
+const
+  MSG_ERRO: string = 'Erro: %s ';
+begin
+  Application.MessageBox(Pchar(Format(MSG_ERRO, [Erro])), Pchar('Erro!!'), MB_OK);
+end;
+
+function TfrmLogin.Sair: Boolean;
+const
+   CONST_PERG: String = 'Deseja fechar a aplicação?';
+begin
+   Result :=  Application.MessageBox(Pchar(CONST_PERG), PChar('Atenção!!!'),
+      MB_ICONQUESTION + MB_YESNO + 0) = IDYES;
+end;
+
+end.

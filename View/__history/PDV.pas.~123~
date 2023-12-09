@@ -1,0 +1,487 @@
+unit PDV;
+
+interface
+
+{$REGION 'Uses'}
+uses
+  Winapi.Windows,
+  Winapi.Messages,
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.Buttons,
+  Generics.Collections,
+  Login,
+  Classes, Vcl.ComCtrls;
+{$ENDREGION}
+
+type
+  TfrmPDV = class(TForm)
+    pnlPedido: TPanel;
+    pnlListagem: TPanel;
+    mmProdutos: TMemo;
+    lblCodigo: TLabel;
+    lblNome: TLabel;
+    lblQuantidade: TLabel;
+    lblValor: TLabel;
+    edtCodigo: TEdit;
+    edtNome: TEdit;
+    edtQuantidade: TEdit;
+    edtvalor: TEdit;
+    gbxAdicionarProdutos: TGroupBox;
+    btnCadastrar: TButton;
+    btnCancelar: TButton;
+    lblNumeroPedido: TLabel;
+    edtNumeroPedido: TEdit;
+    gbxRemoverProduto: TGroupBox;
+    lblCodigoRemover: TLabel;
+    edtCodigoRemover: TEdit;
+    btnRemover: TButton;
+    btnCancelarRemover: TButton;
+    pnlRodapeListagem: TPanel;
+    sbFinalizarCompra: TSpeedButton;
+    sbCancelarCompra: TSpeedButton;
+    sbNovoPedido: TSpeedButton;
+    sbSair: TSpeedButton;
+    sbTrocarUsuario: TSpeedButton;
+    sbHeader: TStatusBar;
+    tmHora: TTimer;
+    lblValortotal: TLabel;
+    procedure FormCreate(Sender: TObject);
+    procedure btnCadastrarClick(Sender: TObject);
+    procedure LimparEdits;
+    procedure btnCancelarClick(Sender: TObject);
+    procedure btnCancelarRemoverClick(Sender: TObject);
+    procedure ExcluirProduto;
+    procedure btnRemoverClick(Sender: TObject);
+    procedure sbNovoPedidoClick(Sender: TObject);
+    procedure sbCancelarCompraClick(Sender: TObject);
+    procedure ResetarTela;
+    procedure sbFinalizarCompraClick(Sender: TObject);
+    procedure FinalizarCompra;
+    procedure sbSairClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure sbTrocarUsuarioClick(Sender: TObject);
+    procedure tmHoraTimer(Sender: TObject);
+    procedure edtNumeroPedidoKeyPress(Sender: TObject; var Key: Char);
+    procedure edtvalorKeyPress(Sender: TObject; var Key: Char);
+  private
+    FProdutos: TObjectList<TProduto>;
+    FUsuario: TUsuario;
+    procedure Cadastrar;
+    procedure Exibir;
+    procedure Logon;
+    function Sair:Boolean;
+    procedure MensagemDeErro(const Erro: String);
+    function CalculaValorTotalPedido:Double;
+    function PedidoAberto:Boolean;
+  public
+    property Produtos: TObjectList<TProduto> read FProdutos write FProdutos;
+
+    destructor Destroy; override;
+  end;
+
+var
+  frmPDV: TfrmPDV;
+  UsuarioLogado: String;
+
+implementation
+
+{$R *.dfm}
+
+{ TfrmPDV }
+
+procedure TfrmPDV.btnCadastrarClick(Sender: TObject);
+begin
+  Cadastrar;
+  sbCancelarCompra.Enabled := True;
+end;
+
+procedure TfrmPDV.btnCancelarClick(Sender: TObject);
+begin
+  LimparEdits;
+end;
+
+procedure TfrmPDV.btnCancelarRemoverClick(Sender: TObject);
+begin
+  LimparEdits;
+end;
+
+procedure TfrmPDV.btnRemoverClick(Sender: TObject);
+begin
+  ExcluirProduto;
+  LimparEdits;
+end;
+
+procedure TfrmPDV.Cadastrar;
+var
+  NovoProduto: TProduto;
+  ProdutoExistente: TProduto;
+  I: Integer;
+  ProdutoExiste: Boolean;
+begin
+  try
+    try
+      NovoProduto := TProduto.Create;
+      NovoProduto.CodPedido := StrToInt(edtNumeroPedido.Text);
+      NovoProduto.Codigo := StrToInt(edtCodigo.Text);
+      NovoProduto.Nome := Trim(edtNome.Text).ToUpper;
+      NovoProduto.Quantidade := StrToInt(edtQuantidade.Text);
+      NovoProduto.Valor := StrToFloat(edtValor.Text);
+      NovoProduto.ValorTotal := NovoProduto.Valor * NovoProduto.Quantidade;
+
+      ProdutoExiste := False;
+
+      for I := 0 to Produtos.Count -1 do
+      begin
+        ProdutoExistente := Produtos[I];
+
+        if not (ProdutoExistente.CodPedido = NovoProduto.CodPedido) then
+        begin
+          Application.MessageBox(Pchar('O número de pedido digitado é diferente do pedido que esta sendo cadastrado, verifique!'), Pchar('Atenção!'), MB_ICONWARNING + MB_OK);
+          edtNumeroPedido.SetFocus;
+          Exit;
+        end;
+
+        if (ProdutoExistente.Codigo = NovoProduto.Codigo) and (ProdutoExistente.Nome <> NovoProduto.Nome) then
+        begin
+          Application.MessageBox(Pchar('Existe um produto cadastrado com esse mesmo código mas o nome esta diferente, verifique!'), Pchar('Atenção!'), MB_ICONWARNING + MB_OK);
+          edtNome.SetFocus;
+          Exit ;
+        end;
+
+        if (ProdutoExistente.Codigo <> NovoProduto.Codigo) and (ProdutoExistente.Nome = NovoProduto.Nome) then
+        begin
+          Application.MessageBox(Pchar('Existe um produto cadastrado com esse mesmo nome mas o código esta diferente, verifique!'), Pchar('Atenção!'), MB_ICONWARNING + MB_OK);
+          edtCodigo.SetFocus;
+          Exit;
+        end;
+
+        if (ProdutoExistente.Codigo = NovoProduto.Codigo) and (ProdutoExistente.Nome = NovoProduto.Nome) then
+        begin
+        if not (ProdutoExistente.Valor = NovoProduto.Valor) then
+        begin
+          Application.MessageBox(Pchar('O valor informado é diferente do valor cadastrado para esse produto, verifique!'), Pchar('Atenção!'), MB_ICONWARNING + MB_OK);
+          edtvalor.SetFocus;
+          Exit;
+        end;
+
+            ProdutoExistente.Quantidade := ProdutoExistente.Quantidade + NovoProduto.Quantidade;
+            ProdutoExistente.ValorTotal := ProdutoExistente.Valor * ProdutoExistente.Quantidade;
+            ProdutoExiste := True;
+          end;
+        end;
+
+      if not ProdutoExiste then
+      begin
+        Produtos.Add(NovoProduto);
+        edtNumeroPedido.SetFocus;
+      end;
+
+      LimparEdits;
+
+    except
+      on E: Exception do
+        MensagemDeErro(E.Message);
+    end;
+  finally
+    Exibir;
+  end;
+end;
+
+function TfrmPDV.CalculaValorTotalPedido: Double;
+var
+  Produto: TProduto;
+  ValorTotal: Double;
+begin
+  ValorTotal:= 0;
+  Result := 0;
+  try
+    if PedidoAberto then
+    begin
+      for Produto in Produtos do
+      begin
+        ValorTotal := ValorTotal + Produto.ValorTotal;
+      end;
+    end;
+
+    Result := ValorTotal;
+  except
+    on E: Exception do
+      MensagemDeErro(E.Message);
+  end;
+end;
+
+destructor TfrmPDV.Destroy;
+begin
+  if Assigned(FProdutos) then
+    FreeAndNil(FProdutos);
+
+  if Assigned (FUsuario) then
+    FreeAndNil(FUsuario);
+
+  inherited;
+end;
+
+procedure TfrmPDV.edtNumeroPedidoKeyPress(Sender: TObject; var Key: Char);
+begin
+  if not (CharInSet(Key, ['0'..'9', #8])) then
+    Key := #0;
+end;
+
+procedure TfrmPDV.edtvalorKeyPress(Sender: TObject; var Key: Char);
+begin
+  if not (CharInSet(Key, ['0'..'9', ',', #8])) then
+    Key := #0;
+end;
+
+procedure TfrmPDV.ExcluirProduto;
+var
+  I: Integer;
+begin
+    try
+      I := 0;
+      while I < Produtos.Count do
+      begin
+        if Produtos.Items[I].Codigo = StrToInt(edtCodigoRemover.Text) then
+        begin
+          Produtos.Delete(I);
+          Break;
+        end
+        else
+          Inc(I);
+      end;
+
+      Exibir;
+
+    except
+      on E: Exception do
+        MensagemDeErro(E.Message);
+    end;
+end;
+
+procedure TfrmPDV.Exibir;
+var
+  Produto: TProduto;
+begin
+  try
+    mmProdutos.Clear;
+
+    if not (Produtos.Count > 0) then
+    begin
+      showMessage('Todos os itens foram excluidos!');
+      FreeAndNil(FProdutos);
+      Exit;
+    end;
+
+    mmProdutos.Lines.Add('PEDIDO: ' + IntToStr(Produtos[0].CodPedido));
+
+    for Produto in Produtos do
+    begin
+      mmProdutos.Lines.Add('Código: ' + IntToStr(Produto.Codigo) + ' Nome: ' + Produto.Nome);
+      mmProdutos.Lines.Add('Quantidade: ' + IntToStr(Produto.Quantidade) + ' Valor Unitário:  ' + FloatToStr(Produto.Valor));
+      mmProdutos.Lines.Add('Valor Total: ' + FloatToStr(Produto.ValorTotal));
+    end;
+
+    lblValortotal.Caption := 'Valor Total R$' + FloatToStr(CalculaValorTotalPedido);
+  except
+      on E: Exception do
+        MensagemDeErro(E.Message);
+  end;
+end;
+
+procedure TfrmPDV.FinalizarCompra;
+var
+  Path: String;
+begin
+     Path:= ExtractFileDir(GetCurrentDir);
+  try
+    try
+       if not PedidoAberto then
+    begin
+    Application.MessageBox(Pchar('Você não possui um pedido aberto para finalizar'), Pchar('Atenção!'), MB_ICONWARNING + MB_OK);
+      Exit;
+    end;
+      mmProdutos.Lines.Add('Valor Total do Pedido: R$' + FloatToStr(CalculaValorTotalPedido));
+      mmProdutos.Lines.SaveToFile(Format('%s\..\Pedido\Pedido%s-%s.txt', [Path,IntToStr(Produtos[0].CodPedido),FormatDateTime('hhnn', Now)]));
+    except
+        on E: Exception do
+          MensagemDeErro(E.Message);
+  end;
+  finally
+    if Assigned(FProdutos) then
+      FreeAndNil(FProdutos)
+  end;
+end;
+
+procedure TfrmPDV.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  try
+    if not Sair then
+      Abort;
+
+  finally
+    if Assigned(FUsuario) then
+      FreeAndNil(FUsuario);
+
+  end;
+end;
+
+procedure TfrmPDV.FormCreate(Sender: TObject);
+begin
+  Logon;
+  sbCancelarCompra.Enabled := False;
+end;
+
+
+procedure TfrmPDV.LimparEdits;
+var
+  I: Integer;
+begin
+    try
+      for I := 0 to ComponentCount -1 do
+      begin
+        if Components[i] is TEdit then
+          TEdit(Components[i]).Clear;
+      end;
+
+    except
+      on E: Exception do
+        MensagemDeErro(E.Message);
+    end;
+end;
+
+procedure TfrmPDV.Logon;
+begin
+  try
+    try
+      if not Assigned(frmLogin)  then
+          frmLogin := TFrmLogin.Create(nil);
+
+      frmLogin.ShowModal;
+      UsuarioLogado := frmLogin.UsuarioLogado;
+    except
+      on E: Exception do
+        MensagemDeErro(E.Message);
+
+    end;
+  finally
+    if  Assigned(frmLogin) then
+        FreeAndNil(frmLogin);
+
+  end;
+end;
+
+procedure TfrmPDV.MensagemDeErro(const Erro: String);
+const
+  MSG_ERRO: string = 'Erro: %s ';
+begin
+  Application.MessageBox(Pchar(Format(MSG_ERRO, [Erro])), Pchar('Erro!!'), MB_OK);
+end;
+
+function TfrmPDV.PedidoAberto: Boolean;
+begin
+  if Assigned(FProdutos) then
+  begin
+    if Produtos.Count > 0 then
+    begin
+      Result:= True;
+      Exit;
+    end;
+  end;
+  Result:= False;
+end;
+
+procedure TfrmPDV.ResetarTela;
+begin
+  try
+    LimparEdits;
+    mmProdutos.Clear;
+    lblValortotal.Caption := EmptyStr;
+    gbxAdicionarProdutos.Visible := False;
+    gbxRemoverProduto.Visible := False;
+  except
+    on E: Exception do
+      ShowMessage(format('Ocorreu um erro:', [E.Message]));
+  end;
+end;
+
+function TfrmPDV.Sair: Boolean;
+const
+   CONST_PERG: String = 'Deseja fechar a aplicação?';
+begin
+   Result :=  Application.MessageBox(Pchar(CONST_PERG), PChar('Atenção!!!'),
+      MB_ICONQUESTION + MB_YESNO + 0) = IDYES;
+end;
+
+procedure TfrmPDV.sbCancelarCompraClick(Sender: TObject);
+begin
+  try
+    if Application.MessageBox(Pchar('Deseja realmente cancelar o pedido cadastrado?'), Pchar('Atenção!'), MB_ICONQUESTION+MB_YESNO) = idNo then
+      Exit;
+
+    ResetarTela;
+    sbCancelarCompra.Enabled := False;
+  finally
+    if Assigned (FProdutos) then
+      FreeAndNil(FProdutos);
+
+  end;
+end;
+
+procedure TfrmPDV.sbFinalizarCompraClick(Sender: TObject);
+begin
+    FinalizarCompra;
+    ResetarTela;
+end;
+
+procedure TfrmPDV.sbNovoPedidoClick(Sender: TObject);
+begin
+  try
+      gbxAdicionarProdutos.Visible := True;
+      gbxRemoverProduto.Visible := True;
+  finally
+    if not Assigned(FProdutos) then
+      Produtos := TObjectList<TProduto>.Create;
+  end;
+end;
+
+procedure TfrmPDV.sbSairClick(Sender: TObject);
+begin
+  if PedidoAberto then
+  begin
+  Application.MessageBox(Pchar('Existe um pedido aberto, para realizar esta ação é necessário que ele seja finalizado ou cancelado.'), Pchar('Atenção!'), MB_ICONWARNING + MB_OK);
+    Exit;
+  end;
+
+  if  Sair then
+  begin
+    Application.Terminate;
+
+  end;
+
+end;
+
+procedure TfrmPDV.sbTrocarUsuarioClick(Sender: TObject);
+begin
+  if PedidoAberto then
+  begin
+  Application.MessageBox(Pchar('Existe um pedido aberto, para realizar esta ação é necessário que ele seja finalizado ou cancelado.'), Pchar('Atenção!'), MB_ICONWARNING + MB_OK);
+    Exit;
+  end;
+
+  Logon;
+end;
+
+procedure TfrmPDV.tmHoraTimer(Sender: TObject);
+begin
+  sbHeader.Panels[0].Text := Format('Olá, %s são %s', [UsuarioLogado, FormatDateTime('hh:nn:ss', Now)]);
+end;
+
+end.
